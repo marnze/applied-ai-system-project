@@ -1,0 +1,42 @@
+flowchart TD
+    U([Listener types a request<br/>'chill songs for studying']) --> G1
+
+    subgraph Guard_In[Input guardrail]
+        G1{check_request<br/>empty? too long?<br/>prompt injection?}
+    end
+    G1 -- blocked --> B([Blocked message to listener])
+    G1 -- ok --> P[Request parser<br/>query_parser.py<br/>text to genre, mood, energy, acoustic]
+    P -- no music words found --> B
+
+    subgraph RAG[Retrieval-augmented generation]
+        P --> R[Retriever<br/>recommender.py scorer<br/>ranks all 19 songs]
+        D1[(data/songs.csv<br/>song catalog)] --> R
+        R --> C[Top 5 songs + scores]
+        C --> N[Genre note lookup]
+        D2[(data/genre_guide.md<br/>genre knowledge)] --> N
+        C --> PR[Prompt builder<br/>request + retrieved songs + genre notes]
+        N --> PR
+        PR --> LLM[Gemini<br/>picks 3 songs, writes reasons<br/>JSON only]
+    end
+
+    LLM --> V{Output guardrail<br/>verify_recommendations<br/>valid JSON? every song in<br/>the retrieved catalog?}
+    V -- rejected, first try --> F[Feedback: which picks were invalid<br/>+ allowed titles] --> PR
+    V -- passed --> S[Confidence score<br/>match strength x verification rate]
+    V -- still failing / API error --> FB[Fallback: rule-based top 3]
+    PR -. no API key .-> FB
+    FB --> S
+    S --> O([Answer to listener<br/>picks, reasons, confidence, warnings])
+
+    O --> H[Human in the loop<br/>low confidence warning<br/>y/n feedback saved to logs/feedback.jsonl]
+
+    subgraph Testing[Reliability checks]
+        T1[pytest: 23 unit tests<br/>fake LLM, guardrails, parser]
+        T2[eval/run_eval.py<br/>13 cases, pass/fail table]
+    end
+    T1 -.checks.-> V
+    T2 -.runs end to end.-> U
+
+    L[(logs/tunejudge.log<br/>every step logged)]
+    R -.-> L
+    V -.-> L
+    O -.-> L

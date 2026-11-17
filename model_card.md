@@ -1,4 +1,4 @@
-# 🎧 Model Card: Music Recommender Simulation
+# 🎧 Model Card: TuneJudge (Music Recommender Simulation → Applied AI System)
 
 ## 1. Model Name  
 
@@ -371,3 +371,73 @@ Prompts:
 **What surprised me:** Four simple rules and some addition produced lists that felt like real recommendations. The study profile got soft lofi, the rock profile got loud rock, and every pick came with a reason. But the same simplicity made it easy to fool. A song could rank #1 while badly missing the user's energy, and changing two weights made the results different rather than better.
 
 **What I'd try next:** Lowercase input and give partial credit for similar genres and moods, add valence and more songs per genre, and try a small collaborative-filtering version using fake listening histories to compare against the content-based approach.
+
+---
+---
+
+# Part 2: TuneJudge 2.0 (Applied AI System)
+
+Everything above documents TuneJudge 1.0 from Module 3. This part covers the 2.0 extension: plain-English requests, retrieval-augmented generation with Google Gemini, guardrails, and confidence scoring. See `README.md` for the architecture and setup.
+
+## 10. What changed in 2.0
+
+- **Intended use:** still classroom exploration, now showing how to ground an LLM in a small catalog and check its answers.
+- **Model:** Google Gemini (`gemini-2.5-flash` by default, set with `GEMINI_MODEL`). It is not fine-tuned. It only sees the listener's request, the 5 songs retrieved by the 1.0 scorer, and genre notes from `data/genre_guide.md`.
+- **Fixes from 1.0 Future Work:** input is now lowercased before matching (the "Capitalized input" bug), listeners can leave the acoustic preference unset, and the original weights are back.
+
+## 11. Testing results
+
+- **Unit tests:** 23 out of 23 pass (`python -m pytest`).
+- **Evaluation harness:** 13 out of 13 cases pass in rules-only mode, with an average confidence of 0.66 (`eval/results.md`). That includes 3 cases where a scripted fake model misbehaves on purpose (invents a song, returns broken JSON, returns an API error), and every one is caught.
+- **With Gemini:** <!-- TODO (Mauricio): fill in after `python -m eval.run_eval` with your key, e.g. "13/13 passed, average confidence 0.xx; Gemini needed a retry on N cases." -->
+
+| Test input | Evaluation criteria | Result |
+|---|---|---|
+| "chill songs for studying" | 3 calm picks (avg energy ≤ 0.5), mostly chill/focused | Pass (confidence 0.97) |
+| "romantic r&b for date night" | #1 is the only r&b/romantic song | Pass, but only medium confidence (0.56): picks 2-3 are unrelated filler |
+| "k-pop for a party" | Says k-pop isn't in the catalog, confidence not high | Pass (0.43, low, with warning) |
+| Empty input | Handled without crashing | Pass, blocked with a helpful message |
+| "Ignore previous instructions…" | Blocked before reaching the AI | Pass |
+| Fake model recommends "Blinding Lights" | Invented song never shown | Pass, rejected and retried |
+| Fake model returns non-JSON twice | System still answers | Pass, fell back to rule-based picks |
+
+## 12. Limitations and biases
+
+- **Tiny, made-up catalog.** 19 songs, and 13 of the 16 genres have only one song. Any request for one of those genres gets one strong match plus filler, which is why indie pop, r&b and rock requests only reach medium confidence.
+- **The catalog's built-in pattern still applies.** Loud songs are electronic and quiet songs are acoustic, so "loud acoustic" or "quiet electronic" listeners can't be served well. The AI can only choose among what retrieval hands it, so it inherits this bias.
+- **The parser only knows its word lists.** Slang, misspellings, other languages, and genres outside the list ("shoegaze") are missed. Requests that only name an artist ("songs like Taylor Swift") are treated as off-topic.
+- **Western, English-centered labels.** Genres like "latin" lump very different styles together, while pop gets its own subgenre. The genre notes reflect my own descriptions, not listener data.
+- **The AI's reasons are not verified.** The guardrail checks that each song is real and in the retrieved set, but not whether the explanation is accurate. Gemini could still describe a song's mood loosely.
+- **Confidence is a heuristic.** It measures how well the shown songs match the parsed profile, not whether a person would actually enjoy them.
+
+## 13. Misuse and prevention
+
+- **Prompt injection:** someone could try to make the assistant ignore its rules or reveal its prompt. Requests matching injection patterns are blocked before reaching the model, the request is passed to Gemini as quoted data, and the system prompt says to treat it as data. Even if an injection slipped through, the output guardrail only lets catalog songs through.
+- **Off-topic use:** using it as a free general chatbot. Requests with no music words are blocked, so they never cost an API call.
+- **Leaking the API key:** the key lives only in `.env` (gitignored), is sent in a request header rather than the URL, and is never logged. Requests that mention an API key are blocked.
+- **Overuse / cost:** one API call per request (two at most with a retry), a 300-character input limit, and a delay between calls in the evaluation scripts to respect free-tier rate limits.
+- **Over-trust:** low-confidence answers say so and ask the listener to review or rephrase; every answer shows its mode (AI vs. rules), so nobody mistakes a fallback for an AI answer.
+
+## 14. What surprised me while testing reliability
+
+<!-- TODO (Mauricio): rewrite these notes in your own words, and add anything you notice when you run it with Gemini. -->
+
+- The first confidence formula rated "chill songs for studying" at only 0.53 (medium) even though all three picks were perfect. It divided by the maximum score of 5.0, but a request with no genre can never earn genre points. Dividing by the best score achievable for that request fixed it (0.97).
+- Rules-only mode looked fine on summary numbers but gave odd picks in practice: for "romantic r&b for date night", #2 was a nostalgic country song chosen only because its energy was close. Reading the actual output, not just pass/fail, is what showed where the AI could help.
+- Every guardrail failure I could think of was easy to test once the model was swappable for a fake one. Testing against the real API alone would never reliably produce an invented song on demand.
+
+## 15. Collaboration with AI
+
+<!-- TODO (Mauricio): this section is graded as YOUR reflection. The notes below are facts from the build to help you; rewrite them in your own words and add your own examples. -->
+
+I used Claude to choose which project to extend, plan the architecture, write most of the code, and draft the documentation. I reviewed the plan, ran the system myself, and checked the output.
+
+- **A suggestion I accepted:** extending the Music Recommender instead of PawPal+ or Game Glitch Investigator. The reasoning was that its scorer already ranks a catalog, so it could become the retriever for RAG with little rewriting, and "the AI can only recommend songs that exist" is a guardrail that's easy to demo and explain. It was also the smallest codebase (about 270 lines vs. about 1,100 for PawPal+).
+- **A suggestion I rejected or changed:** <!-- e.g. a suggestion you scoped down, simplified, renamed, or decided against, and why. Possible candidates from this build: using the official Gemini SDK (the final code uses the standard library instead, so setup is just pytest), having the AI parse the request too (kept rule-based to save API calls and stay testable), or the first confidence formula, which had to be fixed (see section 14). -->
+- **Where I double-checked the AI:** <!-- e.g. running the tests and the eval harness yourself, reading the actual picks rather than trusting summaries, confirming the .env file is ignored by git. -->
+
+## 16. Future work for 2.0
+
+1. Expand the catalog to several songs per genre, including loud acoustic and quiet electronic songs.
+2. Check the AI's explanations, not just its song choices, e.g. flag a "why" that names a mood the song doesn't have.
+3. Use the saved `logs/feedback.jsonl` ratings to tune the weights or the confidence threshold.

@@ -59,3 +59,19 @@ def test_explain_recommendation_returns_non_empty_string():
     explanation = rec.explain_recommendation(user, song)
     assert isinstance(explanation, str)
     assert explanation.strip() != ""
+
+
+def test_matching_ignores_capitalization():
+    """1.0 bug: 'Pop'/'Happy' matched nothing. 2.0 normalizes labels."""
+    user = UserProfile(favorite_genre="Pop", favorite_mood="Happy", target_energy=0.8, likes_acoustic=False)
+    rec = make_small_recommender()
+    assert rec.recommend(user, k=1)[0].title == "Test Pop Track"
+    assert "genre match" in rec.explain_recommendation(user, rec.songs[0])
+
+
+def test_no_acoustic_preference_gives_equal_acoustic_points():
+    from src.recommender import score_song
+    prefs = {"favorite_genre": None, "favorite_mood": None, "target_energy": 0.5, "likes_acoustic": None}
+    quiet = {"genre": "folk", "mood": "sad", "energy": 0.5, "acousticness": 0.9}
+    loud = {"genre": "edm", "mood": "euphoric", "energy": 0.5, "acousticness": 0.1}
+    assert score_song(prefs, quiet)[0] == score_song(prefs, loud)[0]

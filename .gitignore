@@ -8,6 +8,12 @@ __pycache__/
 env/
 venv/
 
+# Secrets: never commit your API key
+.env
+
+# Runtime logs (agent_traces.md and eval results are copied into docs when needed)
+logs/
+
 # OS files
 .DS_Store
 

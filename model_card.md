@@ -389,7 +389,7 @@ Everything above documents TuneJudge 1.0 from Module 3. This part covers the 2.0
 
 - **Unit tests:** 23 out of 23 pass (`python -m pytest`).
 - **Evaluation harness:** 13 out of 13 cases pass in rules-only mode, with an average confidence of 0.66 (`eval/results.md`). That includes 3 cases where a scripted fake model misbehaves on purpose (invents a song, returns broken JSON, returns an API error), and every one is caught.
-- **With Gemini:** 13/13 passed | average confidence 0.66 | modes {'ai': 8, 'rules (fallback)': 2}<!-- TODO: fill in after `python -m eval.run_eval` with your key, e.g. "13/13 passed, average confidence 0.xx; Gemini needed a retry on N cases." -->
+- **With Gemini (`gemini-3.8-flash`):** 13 out of 13 passed, average confidence 0.66 (8 AI answers, 2 fallbacks from the scripted failure cases, 3 blocked inputs).
 
 | Test input | Evaluation criteria | Result |
 |---|---|---|

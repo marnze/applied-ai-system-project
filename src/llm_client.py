@@ -15,7 +15,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
@@ -39,7 +39,7 @@ def load_env_file(path: str = ".env") -> None:
 class GeminiClient:
     """Sends a prompt to Gemini and returns the text of the reply."""
 
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, timeout: float = 30.0):
+    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, timeout: float = 60.0):
         if not api_key:
             raise ValueError("A Gemini API key is required")
         self._api_key = api_key
@@ -53,7 +53,9 @@ class GeminiClient:
     def generate(self, prompt: str, system: str = "", json_output: bool = True) -> str:
         body = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.4},
+            # Newer Gemini models think before answering and work best at their default
+            # temperature, so only the output format is set here.
+            "generationConfig": {},
         }
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
@@ -79,7 +81,8 @@ class GeminiClient:
 
         try:
             parts = data["candidates"][0]["content"]["parts"]
-            return "".join(part.get("text", "") for part in parts)
+            # Skip any "thought" parts; keep only the answer text.
+            return "".join(p.get("text", "") for p in parts if not p.get("thought"))
         except (KeyError, IndexError, TypeError) as err:
             raise LLMError(f"Unexpected Gemini response shape: {str(data)[:300]}") from err
 

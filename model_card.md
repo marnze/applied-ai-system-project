@@ -382,7 +382,7 @@ Everything above documents TuneJudge 1.0 from Module 3. This part covers the 2.0
 ## 10. What changed in 2.0
 
 - **Intended use:** still classroom exploration, now showing how to ground an LLM in a small catalog and check its answers.
-- **Model:** Google Gemini (`gemini-2.5-flash` by default, set with `GEMINI_MODEL`). It is not fine-tuned. It only sees the listener's request, the 5 songs retrieved by the 1.0 scorer, and genre notes from `data/genre_guide.md`.
+- **Model:** Google Gemini (`gemini-3.8-flash` by default, set with `GEMINI_MODEL`). It is not fine-tuned. It only sees the listener's request, the 5 songs retrieved by the 1.0 scorer, and genre notes from `data/genre_guide.md`.
 - **Fixes from 1.0 Future Work:** input is now lowercased before matching (the "Capitalized input" bug), listeners can leave the acoustic preference unset, and the original weights are back.
 
 ## 11. Testing results

@@ -389,7 +389,7 @@ Everything above documents TuneJudge 1.0 from Module 3. This part covers the 2.0
 
 - **Unit tests:** 23 out of 23 pass (`python -m pytest`).
 - **Evaluation harness:** 13 out of 13 cases pass in rules-only mode, with an average confidence of 0.66 (`eval/results.md`). That includes 3 cases where a scripted fake model misbehaves on purpose (invents a song, returns broken JSON, returns an API error), and every one is caught.
-- **With Gemini:** <!-- TODO (Mauricio): fill in after `python -m eval.run_eval` with your key, e.g. "13/13 passed, average confidence 0.xx; Gemini needed a retry on N cases." -->
+- **With Gemini:** 13/13 passed | average confidence 0.66 | modes {'ai': 8, 'rules (fallback)': 2}<!-- TODO: fill in after `python -m eval.run_eval` with your key, e.g. "13/13 passed, average confidence 0.xx; Gemini needed a retry on N cases." -->
 
 | Test input | Evaluation criteria | Result |
 |---|---|---|
@@ -420,21 +420,17 @@ Everything above documents TuneJudge 1.0 from Module 3. This part covers the 2.0
 
 ## 14. What surprised me while testing reliability
 
-<!-- TODO (Mauricio): rewrite these notes in your own words, and add anything you notice when you run it with Gemini. -->
-
 - The first confidence formula rated "chill songs for studying" at only 0.53 (medium) even though all three picks were perfect. It divided by the maximum score of 5.0, but a request with no genre can never earn genre points. Dividing by the best score achievable for that request fixed it (0.97).
 - Rules-only mode looked fine on summary numbers but gave odd picks in practice: for "romantic r&b for date night", #2 was a nostalgic country song chosen only because its energy was close. Reading the actual output, not just pass/fail, is what showed where the AI could help.
 - Every guardrail failure I could think of was easy to test once the model was swappable for a fake one. Testing against the real API alone would never reliably produce an invented song on demand.
 
 ## 15. Collaboration with AI
 
-<!-- TODO (Mauricio): this section is graded as YOUR reflection. The notes below are facts from the build to help you; rewrite them in your own words and add your own examples. -->
+I used Claude to choose which project to extend, plan the architecture, write most of the code, and draft the documentation. I used Gemini's free API key. I reviewed the plan, ran the system myself, and checked the output.
 
-I used Claude to choose which project to extend, plan the architecture, write most of the code, and draft the documentation. I reviewed the plan, ran the system myself, and checked the output.
-
-- **A suggestion I accepted:** extending the Music Recommender instead of PawPal+ or Game Glitch Investigator. The reasoning was that its scorer already ranks a catalog, so it could become the retriever for RAG with little rewriting, and "the AI can only recommend songs that exist" is a guardrail that's easy to demo and explain. It was also the smallest codebase (about 270 lines vs. about 1,100 for PawPal+).
-- **A suggestion I rejected or changed:** <!-- e.g. a suggestion you scoped down, simplified, renamed, or decided against, and why. Possible candidates from this build: using the official Gemini SDK (the final code uses the standard library instead, so setup is just pytest), having the AI parse the request too (kept rule-based to save API calls and stay testable), or the first confidence formula, which had to be fixed (see section 14). -->
-- **Where I double-checked the AI:** <!-- e.g. running the tests and the eval harness yourself, reading the actual picks rather than trusting summaries, confirming the .env file is ignored by git. -->
+- **A suggestion I accepted:** Extending the Music Recommender instead of PawPal or Game Glitch Investigator. The reasoning was that its scorer already ranks a catalog, so it could become the retriever for RAG with little rewriting, and "the AI can only recommend songs that exist" is a guardrail that's easy to demo and explain. It was also the smallest codebase (about 270 lines vs. about 1,100 for PawPal).
+- **A suggestion I rejected or changed:** I changed the default Gemini model from gemini-2.5-flash to gemini-3.8-flash. Claude did not realize that gemini-2.5-flash was retired for new accounts like mine and generated an error when attempting to use it. Thankfully, changing it was a quick fix.
+- **Where I double-checked the AI:** Verifying that the tests and evals produced the correct output by running them myself and double/triple confirming that the .env file was in gitignore.
 
 ## 16. Future work for 2.0
 
